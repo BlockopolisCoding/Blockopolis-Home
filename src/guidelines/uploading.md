@@ -177,6 +177,7 @@ If you would like to use other platforms not mentioned here, please reach out to
 We do not allow furries on Blockopolis. Your project will be removed if a furry is shown.
 Furry profile pictures will be replaced with the default block profile picture.
 If your profile states that you are a furry, you will be banned from Blockopolis.
+Joking about being a furry will bet you banned from Blockopolis, reguardless of proof. This is to avoid false reports.
 
 # Copyright
 You are responsible for making sure you have the necessary rights, licenses, or permission for any user-generated content you submit to Blockopolis.
