@@ -126,7 +126,7 @@ Your account will be instantly banned and you may be reported to the Scratch Tea
 # Content Warnings
 The following contents must include a warning in the project page.
 
-- Profanity
+- Profanity/Swearing
 - Blood and Gore
 - Horror/Disturbing content
 - Flashing imagery

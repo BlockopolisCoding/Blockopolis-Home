@@ -2,23 +2,23 @@
     import { onMount } from "svelte";
     onMount(() => {
         window.location.href =
-            "https://studio.penguinmod.com/PenguinMod-Packager";
+            "https://studio.blockopolis.com/Blockopolis-Packager";
     });
 </script>
 
 <svelte:head>
     <title>Redirecting</title>
-    <meta name="title" content="PenguinMod - Home" />
-    <meta property="og:title" content="PenguinMod - Home" />
-    <meta property="twitter:title" content="PenguinMod - Home">
+    <meta name="title" content="Blockopolis - Home" />
+    <meta property="og:title" content="Blockopolis - Home" />
+    <meta property="twitter:title" content="Blockopolis - Home">
     <meta name="description" content="The area where featured projects and community stuff & info is shown.">
     <meta property="twitter:description" content="The area where featured projects and community stuff & info is shown.">
-    <meta property="og:url" content="https://penguinmod.com/">
-    <meta property="twitter:url" content="https://penguinmod.com/">
+    <meta property="og:url" content="https://blockopolis.com/">
+    <meta property="twitter:url" content="https://blockopolis.com/">
 </svelte:head>
 <div>
     If you are not redirected automatically,
-    <a href="https://studio.penguinmod.com/PenguinMod-Packager">click here</a>
+    <a href="https://studio.blockopolis.com/Blockopolis-Packager">click here</a>
 </div>
 
 <style>
@@ -32,7 +32,7 @@
     }
 
     div {
-        background: #009ccc;
+        background: #ff4c4c;
         display: flex;
         align-items: center;
         height: 100%;

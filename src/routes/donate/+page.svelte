@@ -42,14 +42,14 @@
 </script>
 
 <svelte:head>
-    <title>PenguinMod - Donate</title>
-    <meta name="title"                   content="PenguinMod - Donate" />
-    <meta property="og:title"            content="PenguinMod - Donate" />
-    <meta property="twitter:title"       content="PenguinMod - Donate">
-    <meta name="description"             content="Help support PenguinMod and it's development!">
-    <meta property="twitter:description" content="Help support PenguinMod and it's development!">
-    <meta property="og:url"              content="https://penguinmod.com/donate">
-    <meta property="twitter:url"         content="https://penguinmod.com/donate">
+    <title>Blockopolis - Donate</title>
+    <meta name="title"                   content="Blockopolis - Donate" />
+    <meta property="og:title"            content="Blockopolis - Donate" />
+    <meta property="twitter:title"       content="Blockopolis - Donate">
+    <meta name="description"             content="Help support Blockopolis and it's development!">
+    <meta property="twitter:description" content="Help support Blockopolis and it's development!">
+    <meta property="og:url"              content="https://blockopolis.com/donate">
+    <meta property="twitter:url"         content="https://blockopolis.com/donate">
 </svelte:head>
 
 <NavigationBar />
@@ -68,7 +68,7 @@
             </h1>
             <p>
                 <LocalizedText
-                    text="Help PenguinMod pay for our servers, link & more!"
+                    text="Help Blockopolis pay for our servers, link & more!"
                     key="donate.description"
                     lang={currentLang}
                 />
@@ -84,7 +84,7 @@
             <div class="section-discussion">
                 <p>
                     <LocalizedText
-                        text="PenguinMod helps people around the world create the games that they want and share the fun stuff they make with the community."
+                        text="Blockopolis helps people around the world create the games that they want and share the fun stuff they make with the community."
                         key="donate.message1"
                         lang={currentLang}
                     />
@@ -204,7 +204,7 @@ ${String(TranslationHandler.text(
 
                 <p class="small">
                     <LocalizedText
-                        text="PenguinMod is not affiliated with Scratch, TurboWarp, the Scratch Team, or the Scratch Foundation."
+                        text="Blockopolis is not affiliated with Scratch, TurboWarp, PenguinMod, the Scratch Team, or the Scratch Foundation."
                         key="home.footer.notaffiliated"
                         dontlink={true}
                         lang={currentLang}
@@ -212,7 +212,7 @@ ${String(TranslationHandler.text(
                 </p>
                 <p class="small">
                     <LocalizedText
-                        text="You can always donate to our parent projects Scratch or TurboWarp as well, to help them stay online."
+                        text="You can always donate to our parent projects Scratch, TurboWarp or PenguinMod as well, to help them stay online."
                         key="donate.parents"
                         lang={currentLang}
                     />
@@ -300,13 +300,13 @@ ${String(TranslationHandler.text(
     .detail-card {
         width: calc(100% - 24px);
         padding: 48px 12px;
-        background: dodgerblue;
+        background: #ff4c4c;
         color: white;
         text-align: center;
     }
 
     .section-info {
-        background: #00c3ffad;
+        background: #ff4c4cad;
         height: 12rem;
         color: white;
         display: flex;
@@ -435,6 +435,6 @@ ${String(TranslationHandler.text(
     }
 
     :global(body.dark-mode) a {
-        color: dodgerblue;
+        color: #ff4c4c;
     }
 </style>
