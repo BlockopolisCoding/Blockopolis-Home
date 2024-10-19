@@ -51,6 +51,10 @@
                 text: "The user posts illegal content",
                 key: "report.reason.user.illegal",
             },
+            {
+                text: "The user is a furry",
+                key: "report.reason.user.furry",
+            },
         ],
         project: [
             {
@@ -76,6 +80,10 @@
             {
                 text: "The project contains sexual content or references",
                 key: "report.reason.project.sexual",
+            },
+            {
+                text: "The project contains furries",
+                key: "report.reason.project.furry",
             },
         ],
     };
@@ -243,14 +251,14 @@
 </script>
 
 <svelte:head>
-    <title>PenguinMod - Report</title>
-    <meta name="title"                   content="PenguinMod - Report" />
-    <meta property="og:title"            content="PenguinMod - Report" />
-    <meta property="twitter:title"       content="PenguinMod - Report">
-    <meta name="description"             content="Report a specific project or user on PenguinMod.">
-    <meta property="twitter:description" content="Report a specific project or user on PenguinMod.">
-    <meta property="og:url"              content="https://penguinmod.com/report">
-    <meta property="twitter:url"         content="https://penguinmod.com/report">
+    <title>Blockopolis - Report</title>
+    <meta name="title"                   content="Blockopolis - Report" />
+    <meta property="og:title"            content="Blockopolis - Report" />
+    <meta property="twitter:title"       content="Blockopolis - Report">
+    <meta name="description"             content="Report a specific project or user on Blockopolis.">
+    <meta property="twitter:description" content="Report a specific project or user on Blockopolis.">
+    <meta property="og:url"              content="https://blockopolis.com/report">
+    <meta property="twitter:url"         content="https://blockopolis.com/report">
 </svelte:head>
 
 <NavigationBar />
