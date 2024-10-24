@@ -207,14 +207,14 @@
 </script>
 
 <svelte:head>
-    <title>PenguinMod - Messages</title>
-    <meta name="title"                   content="PenguinMod - Messages" />
-    <meta property="og:title"            content="PenguinMod - Messages" />
-    <meta property="twitter:title"       content="PenguinMod - Messages">
+    <title>Blockopolis - Messages</title>
+    <meta name="title"                   content="Blockopolis - Messages" />
+    <meta property="og:title"            content="Blockopolis - Messages" />
+    <meta property="twitter:title"       content="Blockopolis - Messages">
     <meta name="description"             content="See your messages or alerts.">
     <meta property="twitter:description" content="See your messages or alerts.">
-    <meta property="og:url"              content="https://penguinmod.com/messages">
-    <meta property="twitter:url"         content="https://penguinmod.com/messages">
+    <meta property="og:url"              content="https://blockopolis.com/messages">
+    <meta property="twitter:url"         content="https://blockopolis.com/messages">
 </svelte:head>
 
 <NavigationBar />
@@ -428,7 +428,7 @@
                     {:else if message.type === "remix"}
                         <p>
                             <a
-                                href={`https://studio.penguinmod.com/#${message.remixId}`}
+                                href={`https://studio.blockopolis.com/#${message.remixId}`}
                                 target="_blank"
                             >
                                 {String(
@@ -458,7 +458,7 @@
                         </p>
                         <p>
                             <a
-                                href={`https://studio.penguinmod.com/#${message.projectId}`}
+                                href={`https://studio.blockopolis.com/#${message.projectId}`}
                                 target="_blank"
                             >
                                 <LocalizedText
@@ -661,7 +661,7 @@
     }
 
     .section-info {
-        background: #00c3ffad;
+        background: #ff4c4cad;
         height: 8rem;
         color: white;
         display: flex;
@@ -773,10 +773,10 @@
     }
 
     :global(body.dark-mode) a {
-        color: dodgerblue;
+        color: #ff4c4c;
     }
     .fake-link {
-        color: dodgerblue;
+        color: #ff4c4c;
         text-decoration: underline;
         background: transparent;
         border: 0;

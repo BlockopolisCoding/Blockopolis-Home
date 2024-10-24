@@ -6,14 +6,14 @@
 </script>
 
 <svelte:head>
-    <title>PenguinMod - Loading</title>
-    <meta name="title" content="PenguinMod - Home" />
-    <meta property="og:title" content="PenguinMod - Home" />
-    <meta property="twitter:title" content="PenguinMod - Home">
+    <title>Blockopolis - Loading</title>
+    <meta name="title" content="Blockopolis - Home" />
+    <meta property="og:title" content="Blockopolis - Home" />
+    <meta property="twitter:title" content="Blockopolis - Home">
     <meta name="description" content="The area where featured projects and community stuff & info is shown.">
     <meta property="twitter:description" content="The area where featured projects and community stuff & info is shown.">
-    <meta property="og:url" content="https://penguinmod.com/">
-    <meta property="twitter:url" content="https://penguinmod.com/">
+    <meta property="og:url" content="https://blockopolis.com/">
+    <meta property="twitter:url" content="https://blockopolis.com/">
 </svelte:head>
 
 <NavigationBar />

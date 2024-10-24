@@ -10,10 +10,8 @@ import en from '../translations/en.json';
 // its easy to just duplicate the "en": en, line and then change accordingly
 const languages = {
     "en": en,                      // English
-    
-    // "id": id,                   // Bahasa Indonesia: has no translator anymore, and theres too much untranslated text now
-    
-    // uncomment joke languages when we have >30 regular langs to hide them
+
+    // joke languages
 };
 // add languages that are RTL here
 const rtlLanguages = [

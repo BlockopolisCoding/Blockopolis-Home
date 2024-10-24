@@ -179,6 +179,14 @@ Furry profile pictures will be replaced with the default block profile picture.
 If your profile states that you are a furry, you will be banned from Blockopolis.
 Joking about being a furry will bet you banned from Blockopolis, reguardless of proof. This is to avoid false reports.
 
+# Number Blocks
+References to Number Blocks will be removed.
+
+This includes but is not limited to:
+- Characters (including parodies)
+- Scripts/Quotes from the show
+
+
 # Copyright
 You are responsible for making sure you have the necessary rights, licenses, or permission for any user-generated content you submit to Blockopolis.
 Blockopolis will remove your project if the project violates copyright rules for any specific company or individual, and you may face further punishment.

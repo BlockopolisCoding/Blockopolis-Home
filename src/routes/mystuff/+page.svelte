@@ -165,14 +165,14 @@
 </script>
 
 <svelte:head>
-    <title>PenguinMod - My Stuff</title>
-    <meta name="title"                   content="PenguinMod - My Stuff" />
-    <meta property="og:title"            content="PenguinMod - My Stuff" />
-    <meta property="twitter:title"       content="PenguinMod - My Stuff">
+    <title>Blockopolis - My Stuff</title>
+    <meta name="title"                   content="Blockopolis - My Stuff" />
+    <meta property="og:title"            content="Blockopolis - My Stuff" />
+    <meta property="twitter:title"       content="Blockopolis - My Stuff">
     <meta name="description"             content="View your own projects & content.">
     <meta property="twitter:description" content="View your own projects & content.">
-    <meta property="og:url"              content="https://penguinmod.com/mystuff">
-    <meta property="twitter:url"         content="https://penguinmod.com/mystuff">
+    <meta property="og:url"              content="https://blockopolis.com/mystuff">
+    <meta property="twitter:url"         content="https://blockopolis.com/mystuff">
 </svelte:head>
 
 <NavigationBar />
@@ -230,7 +230,7 @@
             <div class="login-prompt">
                 <p>
                     <LocalizedText
-                        text="Please log in to view your PenguinMod projects."
+                        text="Please log in to view your Blockopolis projects."
                         key="mystuff.login"
                         lang={currentLang}
                     />
@@ -382,7 +382,7 @@
     }
 
     .section-info {
-        background: #00c3ffad;
+        background: #ff4c4cad;
         height: 6rem;
         color: white;
         display: flex;
@@ -427,7 +427,7 @@
     }
 
     :global(body.dark-mode) a {
-        color: dodgerblue;
+        color: #ff4c4c;
     }
 
     /* edit project dropdown & options */
@@ -497,7 +497,7 @@
     }
     .dropdown-option-default:focus,
     .dropdown-option-default:hover {
-        background: #00c3ff;
+        background: #ff4c4c;
     }
 
     .dropdown-option-remix:focus,
