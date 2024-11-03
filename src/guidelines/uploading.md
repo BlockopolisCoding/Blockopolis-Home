@@ -186,6 +186,12 @@ This includes but is not limited to:
 - Characters (including parodies)
 - Scripts/Quotes from the show
 
+# Skibidi Toilet
+References to Skibidi Toilet will be removed.
+
+This includes but is not limited to:
+- Characters
+- Sounds from the series
 
 # Copyright
 You are responsible for making sure you have the necessary rights, licenses, or permission for any user-generated content you submit to Blockopolis.
