@@ -42,9 +42,10 @@
     let guidelinePageOpen = false;
 
     let projectId;
-    let projectMetadata;
+    let projectMetadata = {};
 
     let newProjectImage;
+    let newProjectURL;
     let newProjectData;
 
     let projectInputName;
@@ -80,21 +81,22 @@
             return;
         }
 
-        const privateCode = localStorage.getItem("PV");
-        if (!privateCode) {
+        const username = localStorage.getItem("username")
+        const token = localStorage.getItem("token");
+        if (!token || !username) {
             loggedIn = false;
             kickOut();
             return;
         }
-        Authentication.usernameFromCode(privateCode)
+        Authentication.usernameFromCode(username, token)
             .then(({ username }) => {
                 if (username) {
                     ProjectApi.getProjectMeta(projectId)
                         .then((metadata) => {
-                            projectName = metadata.name;
+                            projectName = metadata.title;
                             projectMetadata = metadata;
                             ProjectClient.setUsername(username);
-                            ProjectClient.setPrivateCode(privateCode);
+                            ProjectClient.setToken(token);
                             loggedIn = true;
                         })
                         .catch((err) => {
@@ -156,7 +158,15 @@
                 }
                 // image: uri of thumbnail image
                 if (data.type === "image") {
-                    newProjectImage = data.uri;
+                    newProjectURL = data.uri;
+
+                    var arr = data.uri.split(','), mime = arr[0].match(/:(.*?);/)[1],
+                        bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+                    while(n--){
+                        u8arr[n] = bstr.charCodeAt(n);
+                    }
+
+                    newProjectImage = new Blob([u8arr], {type:mime});
                 }
                 // project: uri of project data
                 if (data.type === "project") {
@@ -184,7 +194,7 @@
     });
     
     let isBusyUploading = false;
-    function updateProject() {
+    async function updateProject() {
         if (isBusyUploading) return;
         // if (projectMetadata.featured) {
         //     const code = projectId;
@@ -206,25 +216,19 @@
         const newMetadata = {};
         const data = {
             newMeta: newMetadata,
-        };
-        if (components.projectName.value !== projectName) {
-            newMetadata.name = components.projectName.value;
         }
-        if (
-            components.projectInstructions.value !==
-            projectMetadata.instructions
-        ) {
-            newMetadata.instructions = components.projectInstructions.value;
-        }
-        if (components.projectNotes.value !== projectMetadata.notes) {
-            newMetadata.notes = components.projectNotes.value;
-        }
+        newMetadata.title = projectName;
+        newMetadata.instructions = components.projectInstructions.value;
+        newMetadata.notes = components.projectNotes.value;
+
         if (newProjectImage) {
             data.image = newProjectImage;
-        }
+        } // we're not going to send the image if it's not changed
+
         if (newProjectData) {
             data.project = newProjectData;
-        }
+        } // we're not going to send the project if it's not changed
+
         ProjectClient.updateProject(projectId, data)
             .then(kickOut)
             .catch((err) => {
@@ -266,15 +270,14 @@
 
     async function imageFilePicked(input) {
         input = input.target;
-        const imageUrl = await filePicked(input);
-        newProjectImage = imageUrl;
+        newProjectImage = input.files[0];
+        newProjectURL = await filePicked(input);
     }
     async function projectFilePicked(input) {
         input = input.target;
         const file = input.files[0];
         if (!file) return;
-        const projectUri = await filePicked(input);
-        newProjectData = projectUri;
+        newProjectData = file;
         projectInputName.innerText = TranslationHandler.text(
             "uploading.project.ownfile.picked",
             currentLang
@@ -588,7 +591,7 @@
                         bind:this={components.projectName}
                         on:dragover={allowEmojiDrop}
                         on:drop={handleEmojiDrop}
-                        value={projectName}
+                        bind:value={projectName}
                     />
                     <p class="important notmargin" style="margin-top:24px">
                         <LocalizedText
@@ -663,9 +666,9 @@
                 <div style="width:50%;">
                     <img
                         src={newProjectImage
-                            ? newProjectImage
+                            ? newProjectURL
                             : projectId
-                            ? `${LINK.projects}api/pmWrapper/iconUrl?id=${projectId}`
+                            ? `${LINK.projects}api/v1/projects/getproject?projectID=${projectId}&requestType=thumbnail`
                             : "/empty-project.png"}
                         style="border-width:1px;border-style:solid;border-color:rgba(0, 0, 0, 0.1);width:100%;"
                         alt="Project Thumbnail"

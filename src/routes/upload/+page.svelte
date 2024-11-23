@@ -3,6 +3,7 @@
     import Authentication from "../../resources/authentication.js";
     import ProjectApi from "../../resources/projectapi.js";
     import EmojiList from "../../resources/emojis.js";
+    import { PUBLIC_STUDIO_URL } from "$env/static/public";
 
     const ProjectClient = new ProjectApi();
 
@@ -42,11 +43,14 @@
     let loadingExternal = false;
 
     let projectImage;
+    let projectImageURL;
     let projectData;
 
     let projectInputName;
     let remixingProjectName;
     let remixProjectId;
+
+    let username;
 
     let remixedInURL = false;
 
@@ -54,10 +58,107 @@
     let projectPage = 0;
     let lastProjectPage = false;
 
+    let recommendedTagList = [];
+    let recommendedTagUpdate = 0;
     const components = {
         projectName: null,
         projectInstructions: null,
         projectNotes: null,
+    };
+
+    const updateRecommendedTags = () => {
+        const combinedText = `${String(components.projectName.value)} ${String(components.projectInstructions.value)} ${String(components.projectNotes.value)}`;
+        const normalizedText = combinedText
+            .toLowerCase()
+            .replace(/[\s\-_\W]+/gi, "");
+        recommendedTagList = [];
+
+        const hashtags = combinedText.match(/#([\w-]+)/g) || [];
+
+        // Frontpage-able tags:
+        if (normalizedText.includes("game") || normalizedText.includes("playable")) {
+            recommendedTagList.push("games");
+        }
+        if (normalizedText.includes("animation") || normalizedText.includes("animated") || normalizedText.includes("animate")) {
+            recommendedTagList.push("animation");
+        }
+        if (normalizedText.includes("art") || normalizedText.includes("drawn") || normalizedText.includes("drawing") || normalizedText.includes("paint")) {
+            recommendedTagList.push("art");
+        }
+        if (normalizedText.includes("platform") || normalizedText.includes("jumping")) {
+            recommendedTagList.push("platformer");
+        }
+        if (normalizedText.includes("rpg") || normalizedText.includes("roguelike")) {
+            recommendedTagList.push("rpg");
+        }
+        if (normalizedText.includes("story") || normalizedText.includes("lore")) {
+            recommendedTagList.push("story");
+        }
+        if (normalizedText.includes("minigame") || normalizedText.includes("warioware")) {
+            recommendedTagList.push("minigames");
+        }
+        if (normalizedText.includes("online") || normalizedText.includes("multiplayer") || normalizedText.includes("cloudlink")) {
+            recommendedTagList.push("online");
+        }
+        if (normalizedText.includes("remade") || normalizedText.includes("remake") || normalizedText.includes("demake")) {
+            recommendedTagList.push("remake");
+        }
+        if (normalizedText.includes("physics") || normalizedText.includes("box2d")) {
+            recommendedTagList.push("physics");
+        }
+        if (normalizedText.includes("contest")) {
+            recommendedTagList.push("contest");
+        }
+        if (normalizedText.includes("horror") || normalizedText.includes("scary") || normalizedText.includes("spook") || normalizedText.includes("spoop") || normalizedText.includes("halloween")) {
+            recommendedTagList.push("horror");
+        }
+        if (normalizedText.includes("tutorial") || normalizedText.includes("teach")) {
+            recommendedTagList.push("tutorial");
+        }
+        if (normalizedText.includes("3d")) {
+            recommendedTagList.push("3d");
+        }
+        if (normalizedText.includes("2d")) {
+            recommendedTagList.push("2d");
+        }
+        if (normalizedText.includes("dimension")) {
+            recommendedTagList.push("3d");
+            recommendedTagList.push("2d");
+        }
+
+        // Misc
+        if (normalizedText.includes("clicker") || normalizedText.includes("clicking")) {
+            recommendedTagList.push("clicker");
+        }
+        if (normalizedText.includes("metroid") || normalizedText.includes("metroidvania")) {
+            recommendedTagList.push("metroidvania");
+        }
+        if (normalizedText.includes("towerdefense") || normalizedText.includes("btd") || normalizedText.includes("bloonstd")) {
+            recommendedTagList.push("towerdefense");
+        }
+        if (normalizedText.includes("christmas") || normalizedText.includes("festive") || normalizedText.includes("xmas") || normalizedText.includes("presents")) {
+            recommendedTagList.push("christmas");
+        }
+        if (normalizedText.includes("aprilfools")) {
+            recommendedTagList.push("aprilfools");
+        }
+
+        // remove recommended tags present inside the text
+        for (const hashtag of hashtags) {
+            recommendedTagList = recommendedTagList.filter((recommendedTag) => `#${recommendedTag}` !== hashtag);
+        }
+        // remove duplicate tags
+        recommendedTagList = [...new Set(recommendedTagList)];
+        recommendedTagUpdate += 1;
+    };
+    const clickOnRecommendedTag = (tagText) => {
+        const originalText = String(components.projectNotes.value);
+        if (originalText.endsWith(" ") || originalText.length <= 0 || originalText.match(/^[\s]+$/gi)) {
+            components.projectNotes.value += `#${tagText}`;
+        } else {
+            components.projectNotes.value += ` #${tagText}`;
+        }
+        updateRecommendedTags();
     };
 
     function floatTo2Decimals(number) {
@@ -71,7 +172,16 @@
         return Number(newNumber);
     }
 
-    onMount(() => {
+    function dataURLtoBlob(dataurl) {
+        var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+        while(n--){
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new Blob([u8arr], {type:mime});
+    }
+
+    onMount(async () => {
         const params = new URLSearchParams(location.search);
         const projName = params.get("name");
         const remixId = params.get("remix");
@@ -88,19 +198,16 @@
             });
         }
 
-        const privateCode = localStorage.getItem("PV");
-        if (!privateCode) {
+        username = localStorage.getItem("username");
+        const token = localStorage.getItem("token");
+        if (!token || !username) {
             loggedIn = false;
         }
-        Authentication.usernameFromCode(privateCode)
-            .then(({ username }) => {
-                if (username) {
-                    ProjectClient.setUsername(username);
-                    ProjectClient.setPrivateCode(privateCode);
-                    loggedIn = true;
-                    return;
-                }
-                loggedIn = false;
+        Authentication.usernameFromCode(username, token)
+            .then(() => {
+                ProjectClient.setUsername(username);
+                ProjectClient.setToken(token);
+                loggedIn = true;
             })
             .catch(() => {
                 loggedIn = false;
@@ -127,7 +234,7 @@
                         {
                             p4: data,
                         },
-                        importLocation
+                        "*" // now really you should never do this but im lazy and this shit is refusing to work
                     );
                 } catch (e) {
                     console.warn("Cannot post message", e);
@@ -135,7 +242,7 @@
             }
             // when WE get a post from PM
             window.addEventListener("message", (e) => {
-                if (e.origin !== importLocation) {
+                if (e.origin !== importLocation) { // disable if running locally
                     return;
                 }
                 const data = e.data && e.data.p4;
@@ -148,11 +255,12 @@
                 }
                 // image: uri of thumbnail image
                 if (data.type === "image") {
-                    projectImage = data.uri;
+                    projectImageURL = data.uri;
+                    projectImage = dataURLtoBlob(data.uri);
                 }
                 // project: uri of project data
                 if (data.type === "project") {
-                    projectData = data.uri;
+                    projectData = dataURLtoBlob(data.uri);
                 }
 
                 // we done here
@@ -169,11 +277,8 @@
         }
     });
 
-    function filePicked(input) {
+    function filePicked(file) {
         return new Promise((resolve, reject) => {
-            if (!input) return reject("NoInput");
-            if (!input.files) return reject("NoFiles");
-            const file = input.files[0];
             if (!file) return reject("NoFile");
             const fileReader = new FileReader();
             fileReader.onload = (e) => {
@@ -186,15 +291,14 @@
 
     async function imageFilePicked(input) {
         input = input.target;
-        const imageUrl = await filePicked(input);
-        projectImage = imageUrl;
+        projectImage = input.files[0];
+        projectImageURL = await filePicked(projectImage);
     }
     async function projectFilePicked(input) {
         input = input.target;
         const file = input.files[0];
         if (!file) return;
-        const projectUri = await filePicked(input);
-        projectData = projectUri;
+        projectData = file;
         projectInputName.innerText = TranslationHandler.text(
             "uploading.project.ownfile.picked",
             currentLang
@@ -204,9 +308,14 @@
     }
 
     let isBusyUploading = false;
-    function uploadProject() {
+    async function uploadProject() {
         if (isBusyUploading) return;
         isBusyUploading = true;
+
+        if (!projectImage) {
+            projectImage = await fetch("/empty-project.png").then(res => res.blob());
+        }
+
         ProjectClient.uploadProject({
             title: components.projectName.value,
             instructions: components.projectInstructions.value,
@@ -215,9 +324,9 @@
             remix: remixProjectId,
             project: projectData,
         })
-            .then((projectId) => {
-                window.open(`${LINK.base}#${projectId}`);
-            })
+        .then((projectId) => {
+            window.open(`${PUBLIC_STUDIO_URL}/#${projectId}`);
+        })
             .catch((err) => {
                 const message = TranslationHandler.text(
                     `uploading.error.${String(err).toLowerCase()}`,
@@ -242,21 +351,11 @@
     Authentication.onLogout(() => {
         loggedIn = false;
     });
-    Authentication.onAuthentication((privateCode) => {
-        loggedIn = null;
-        Authentication.usernameFromCode(privateCode)
-            .then(({ username }) => {
-                if (username) {
-                    ProjectClient.setUsername(username);
-                    ProjectClient.setPrivateCode(privateCode);
-                    loggedIn = true;
-                    return;
-                }
-                loggedIn = false;
-            })
-            .catch(() => {
-                loggedIn = false;
-            });
+    Authentication.onAuthentication((_username, privateCode) => {
+        loggedIn = true;
+        username = _username;
+        ProjectClient.setUsername(_username);
+        ProjectClient.setToken(privateCode);
     });
 
     let canRemix = [];
@@ -272,7 +371,6 @@
         //       just do one of them and then await it idk
         //       gonna do that later
         //       (aka in like 3 months when i finally look at this code again)
-        console.log(projectPage);
         if (pageType === "remix") {
             ProjectApi.getProjects(projectPage).then((projectss) => {
                 canRemix.push(...projectss);
@@ -378,14 +476,11 @@
         });
     });
 
-    function selectToRemixProject(id) {
-        remixProjectId = Number(id);
-        if (isNaN(remixProjectId)) {
-            remixProjectId = 1;
-        }
-        ProjectApi.getProjectMeta(remixProjectId).then((meta) => {
-            remixingProjectName = meta.name;
-        });
+    function selectToRemixProject(id, title) {
+        remixProjectId = String(id);
+        if (isNaN(remixProjectId) || remixProjectId < 0)
+            remixProjectId = 0;
+        remixingProjectName = title;
         remixPageOpen = false;
     }
 
@@ -522,9 +617,9 @@
                     {#each otherProjects as project}
                         <ClickableProject
                             id={project.id}
-                            name={project.name}
-                            owner={project.owner}
-                            date={project.date}
+                            title={project.title}
+                            author={username}
+                            lastUpdate={project.lastUpdate}
                             featured={project.featured}
                             showdate={true}
                             on:click={window.open(
@@ -575,12 +670,12 @@
                     {#each canRemix as project}
                         <ClickableProject
                             id={project.id}
-                            name={project.name}
-                            owner={project.owner}
+                            title={project.title}
+                            author={project.author}
                             date={project.date}
                             featured={project.featured}
                             showdate={true}
-                            on:click={selectToRemixProject(project.id)}
+                            on:click={() => {selectToRemixProject(project.id, project.title)}}
                         />
                     {/each}
                     {#if !lastProjectPage}
@@ -776,6 +871,7 @@
                             currentLang
                         )}
                         bind:this={components.projectName}
+                        on:input={updateRecommendedTags}
                         on:dragover={allowEmojiDrop}
                         on:drop={handleEmojiDrop}
                         value={projectName}
@@ -793,6 +889,7 @@
                             currentLang
                         )}
                         bind:this={components.projectInstructions}
+                        on:input={updateRecommendedTags}
                         on:dragover={allowEmojiDrop}
                         on:drop={handleEmojiDrop}
                     />
@@ -809,9 +906,17 @@
                             currentLang
                         )}
                         bind:this={components.projectNotes}
+                        on:input={updateRecommendedTags}
                         on:dragover={allowEmojiDrop}
                         on:drop={handleEmojiDrop}
                     />
+                    {#key recommendedTagUpdate}
+                        {#each recommendedTagList as recommendedTag}
+                            <button class="recommended-tag" on:click={() => clickOnRecommendedTag(recommendedTag)}>
+                                + #{recommendedTag}
+                            </button>
+                        {/each}
+                    {/key}
                     <input
                         id="FILERI"
                         type="file"
@@ -848,7 +953,7 @@
                 </div>
                 <div style="width:50%;">
                     <img
-                        src={projectImage ? projectImage : "/empty-project.png"}
+                        src={projectImage ? projectImageURL : "/empty-project.png"}
                         style="border-width:1px;border-style:solid;border-color:rgba(0, 0, 0, 0.1);width:100%;"
                         alt="Project Thumbnail"
                     />
@@ -869,7 +974,7 @@
                 </div>
             </div>
             <div style="display:flex;flex-direction:row;margin-top:48px">
-                {#if loggedIn === true && projectData}
+                {#if loggedIn && projectData !== undefined}
                     <div>
                         {#if remixingProjectName}
                             <p>
@@ -1180,6 +1285,21 @@
     }
     :global(body.dark-mode) .emoji-picker-emoji:hover {
         background: rgba(255, 255, 255, 0.15);
+    }
+
+    .recommended-tag {
+        background: #00c3ff;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        border-radius: 4px;
+        padding: 2px 4px;
+        margin-right: 4px;
+        margin-bottom: 4px;
+        color: white;
+        cursor: pointer;
+    }
+    :global(html[dir="rtl"]) .recommended-tag {
+        margin-right: initial;
+        margin-left: 4px;
     }
 
     .card {

@@ -2,6 +2,8 @@
     import { onMount } from "svelte";
     import { page } from "$app/stores";
 
+    import { PUBLIC_API_URL, PUBLIC_STUDIO_URL } from "$env/static/public";
+
     import Authentication from "../resources/authentication.js";
     import ProjectApi from "../resources/projectapi.js";
     import censor from "../resources/basiccensorship.js";
@@ -127,6 +129,17 @@
             ? num.toFixed(2)
             : num
     }
+    function unixToDisplayDate(unix) {
+        unix = Number(unix);
+        return `${new Date(unix).toLocaleString([], {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "numeric",
+            minute: "numeric",
+            hour12: true
+        })}`;
+    }
     function rateChance(max, thresh) {
         const randomNumber = Math.random()
         const underThresh = randomNumber * max <= thresh
@@ -154,19 +167,22 @@
     }
 
     const getAndUpdateMyFeed = async () => {
-        const feed = await ProjectClient.getMyFeed();
+        console.log("update feed");
+        const feed = await ProjectClient.getMyFeed(0);
         if (feed.length <= 0) {
             feedIsEmpty = true;
         }
         myFeed = feed;
     };
+
     const getFeedText = (type, author, content) => {
         switch (type) {
             case "follow":
                 return TranslationHandler.text(
                     "feed.following",
                     currentLang
-                ).replace("$1", author);
+                ).replace("$1", author)
+                .replace("$2", content.username === localStorage.getItem("username") ? "you" : content.username)
             case "upload":
                 return TranslationHandler.text("feed.uploaded", currentLang)
                     .replace("$1", author)
@@ -186,7 +202,7 @@
         switch (type) {
             case "upload":
             case "remixed":
-                return `https://studio.penguinmod.com/#${content.id}`;
+                return `${PUBLIC_STUDIO_URL}/#{content.id}`;
             case "posted":
                 return `/profile?user=${author}&post=${content.id}`;
             default:
@@ -195,10 +211,32 @@
     };
 
     let tagForProjects = "";
+    let loggedInAdminOrMod = false;
     onMount(async () => {
+        Language.forceUpdate();
+        const username = localStorage.getItem("username")
+        const token = localStorage.getItem("token")
+        if (!token || !username) {
+            loggedIn = false;
+            loggedInAdminOrMod = false;
+        } else {
+            const {isAdmin, isApprover} = Authentication.usernameFromCode(username, token)
+                .catch((err) => {
+                    loggedIn = false;
+                    loggedInAdminOrMod = false;
+                });
+
+            loggedInUsername = username;
+            ProjectClient.setUsername(username);
+            ProjectClient.setToken(token);
+            loggedIn = true;
+            loggedInAdminOrMod = isAdmin || isApprover;
+            getAndUpdateMyFeed();
+        }
+
         const projectId = Number(location.hash.replace("#", ""));
         if (!isNaN(projectId) && projectId != 0) {
-            location.href = `https://studio.penguinmod.com/#${projectId}`;
+            location.href = `${PUBLIC_STUDIO_URL}/#${projectId}`;
             return;
         }
 
@@ -223,7 +261,7 @@
             });
         });
 
-        ProjectApi.getFrontPage()
+        ProjectClient.getFrontPage()
             .then(results => {
                 projects.today = results.latest;
                 projects.featured = results.featured;
@@ -241,55 +279,20 @@
 
     // login code below
     let loggedInUsername = "";
-    onMount(async () => {
-        const privateCode = localStorage.getItem("PV");
-        if (!privateCode) {
-            loggedIn = false;
-            return;
-        }
-        Authentication.usernameFromCode(privateCode)
-            .then(({ username }) => {
-                if (username) {
-                    loggedInUsername = username;
-                    ProjectClient.setUsername(username);
-                    ProjectClient.setPrivateCode(privateCode);
-                    loggedIn = true;
-                    getAndUpdateMyFeed();
-                    return;
-                }
-                loggedIn = false;
-            })
-            .catch(() => {
-                loggedIn = false;
-            });
-    });
 
     Authentication.onLogout(() => {
         loggedIn = false;
         myFeed = [];
     });
-    Authentication.onAuthentication((privateCode) => {
-        loggedIn = null;
-        Authentication.usernameFromCode(privateCode)
-            .then(({ username }) => {
-                if (username) {
-                    loggedInUsername = username;
-                    ProjectClient.setUsername(username);
-                    ProjectClient.setPrivateCode(privateCode);
-                    loggedIn = true;
-                    getAndUpdateMyFeed();
-                    return;
-                }
-                loggedIn = false;
-            })
-            .catch(() => {
-                loggedIn = false;
-            });
+    Authentication.onAuthentication((username, token) => {
+        loggedInUsername = username;
+        ProjectClient.setUsername(username);
+        ProjectClient.setToken(token);
+        loggedIn = true;
+        getAndUpdateMyFeed();
+        return;
     });
 
-    onMount(() => {
-        Language.forceUpdate();
-    });
     Language.onChange((lang) => {
         currentLang = lang;
         langDecided = true;
@@ -327,21 +330,9 @@
         buttonText={"Donate"}
         buttonHref={"/donate"}
     />
-    <!-- TODO: should we remove this? -->
-    <!-- <Alert
-        onlyShowID={"privacee:_1"}
-        text={"Our privacy policy has been updated."}
-        textBreakup={true}
-        textColor={"white"}
-        backColor={"#009900"}
-        hasImage={false}
-        hasButton={true}
-        buttonText={"View"}
-        buttonHref={"https://studio.penguinmod.com/privacy.html"}
-    /> -->
     <StatusAlert />
 
-    {#if loggedIn === false}
+    {#if !loggedIn}
         <div class="section-info">
             <div style="margin-left: 8rem;">
                 <h1>
@@ -355,6 +346,7 @@
                     <LocalizedText
                         text="Built off of TurboWarp and Scratch"
                         key="home.introduction2"
+                        dolink={true}
                         lang={currentLang}
                     />
                 </h1>
@@ -393,7 +385,7 @@
             {/if}
         </div>
 
-        {#if langDecided && currentLang != "en" && loggedIn === false}
+        {#if langDecided && currentLang != "en" && !loggedIn}
             <div class="section-language-warning">
                 <img
                     src="/warning.png"
@@ -444,12 +436,11 @@
         </div>
     {/if}
 
-    {#if langDecided && currentLang != "en" && loggedIn !== false}
+    {#if langDecided && currentLang != "en" && loggedIn}
         <div class="section-language-warning">
             <img
                 src="/warning.png"
                 draggable="false"
-                style="height: 24px; margin-right: 6px"
                 alt="Warning"
             />
             <p>
@@ -467,14 +458,13 @@
             <LocalizedText
                 text="Scratch Note: Please don't mention PenguinMod on Scratch, we have different rules compared to Scratch! 😅"
                 key="home.scratchnote"
-                dontlink={true}
                 lang={currentLang}
             />
         </i>
     </p>
 
     <div class="section-categories">
-        {#if loggedIn !== true}
+        {#if !loggedIn}
             <ContentCategory
                 header={TranslationHandler.text(
                     "home.sections.whatsnew",
@@ -511,7 +501,7 @@
         {:else}
             <div class="welcome-back-card">
                 <img
-                    src={`https://trampoline.turbowarp.org/avatars/by-username/${loggedInUsername}`}
+                    src={`${PUBLIC_API_URL}/api/v1/users/getpfp?username=${loggedInUsername}`}
                     alt="Profile"
                     class="profile-picture"
                 />
@@ -526,7 +516,7 @@
                         <button class="welcome-back-button">
                             <div class="welcome-back-icon-container">
                                 <img
-                                    src="/messages/create.svg"
+                                    src="/messagesstatic/create.svg"
                                     alt="Create"
                                     draggable="false"
                                 />
@@ -542,7 +532,7 @@
                         <button class="welcome-back-button">
                             <div class="welcome-back-icon-container">
                                 <img
-                                    src="/messages/mystuff.svg"
+                                    src="/messagesstatic/mystuff.svg"
                                     alt="My Stuff"
                                     draggable="false"
                                 />
@@ -561,7 +551,7 @@
                         <button class="welcome-back-button">
                             <div class="welcome-back-icon-container">
                                 <img
-                                    src="/messages/profile.svg"
+                                    src="/messagesstatic/profile.svg"
                                     alt="Profile"
                                     draggable="false"
                                 />
@@ -590,17 +580,16 @@
                                 <UserDisplay
                                     link={getFeedUrl(
                                         message.type,
-                                        message.username,
-                                        message.content
+                                        message.data.username
                                     )}
-                                    userLink={`/profile?user=${message.username}`}
+                                    userLink={`/profile?user=${message.user.username}`}
                                     text={getFeedText(
                                         message.type,
-                                        message.username,
-                                        message.content
+                                        message.user.username,
+                                        message.data
                                     )}
-                                    author={message.username}
-                                    image={`https://trampoline.turbowarp.org/avatars/by-username/${message.username}`}
+                                    author={message.user.username}
+                                    image={`${PUBLIC_API_URL}/api/v1/users/getpfp?username=${message.user.username}`}
                                 />
                             {/if}
                         {/each}
@@ -758,7 +747,7 @@
                 "home.sections.weeklyfeatured",
                 currentLang
             )}
-            seemore={`/search?q=featured%3Aprojects`}
+            seemore={`/search?q=featured%3A`}
             style="width:65%;"
             stylec="height: 244px;overflow-x:auto;overflow-y:hidden;"
         >
@@ -852,6 +841,19 @@
                     {#each projects.voted as project}
                         <Project {...project} />
                     {/each}
+                {:else if projectsLoaded === true}
+                    <div
+                        style="display:flex;flex-direction:column;align-items: center;width: 100%;"
+                    >
+                        <PenguinConfusedSVG width="8rem" />
+                        <p>
+                            <LocalizedText
+                                text="Nothing found. You can help feature projects by clicking the yellow checkmark below them."
+                                key="home.none.featured"
+                                lang={currentLang}
+                            />
+                        </p>
+                    </div>
                 {:else if projectsFailed === true}
                     <div
                         style="display:flex;flex-direction:column;align-items: center;width: 100%;"
@@ -879,7 +881,7 @@
                 header={String(TranslationHandler.text(
                     "home.sections.sortedbytag",
                     currentLang
-                )).replace('$1', tagForProjects)}
+                )).replace('$1', tagForProjects.slice(1))}
                 seemore={`/search?q=%23${tagForProjects}`}
                 style="width:65%;"
                 stylec="height: 244px;overflow-x:auto;overflow-y:hidden;"
@@ -896,7 +898,7 @@
                 "home.sections.todaysprojects",
                 currentLang
             )}
-            seemore={`/search?q=featured%3Aexclude`}
+            seemore={`/search?q=newest%3A`}
             style="width:65%;"
             stylec="height: 244px;overflow-x:auto;overflow-y:hidden;"
         >
@@ -938,18 +940,11 @@
 
     <div class="footer">
         <p>
-            <!-- {#if !thingyActive} -->
-                <LocalizedText
-                    text="PenguinMod is not affiliated with Scratch, TurboWarp, the Scratch Team, or the Scratch Foundation."
-                    key="home.footer.notaffiliated"
-                    dontlink={true}
-                    lang={currentLang}
-                />
-            <!-- todo: find a better place to put this that isn't, the legal text -->
-            <!-- {:else}
-                EEAAOO EEAAOOEEAAOOEEAAOOEEAAOOEEAAOOEEAAOO EEAAOO
-                EEAAOOEEAAOOEEAAOO EEAAOO
-            {/if} -->
+            <LocalizedText
+                text="PenguinMod is not affiliated with Scratch, TurboWarp, the Scratch Team, or the Scratch Foundation."
+                key="home.footer.notaffiliated"
+                lang={currentLang}
+            />
         </p>
         <div class="footer-list">
             <div class="footer-section">
@@ -1032,6 +1027,13 @@
                     <LocalizedText
                         text="Uploading Guidelines"
                         key="home.footer.sections.info.guidelines"
+                        lang={currentLang}
+                    />
+                </a>
+                <a target="_blank" href={LINK.contact}>
+                    <LocalizedText
+                        text="Contact Us"
+                        key="home.footer.sections.info.contact"
                         lang={currentLang}
                     />
                 </a>
@@ -1306,13 +1308,20 @@
         text-align: center;
     }
     .section-language-warning > img {
+        height: 24px;
+        margin-right: 6px;
         filter: brightness(0);
     }
+
     :global(body.dark-mode) .section-language-warning {
         color: white;
     }
     :global(body.dark-mode) .section-language-warning > img {
         filter: brightness(1);
+    }
+    :global(html[dir="rtl"]) .section-language-warning img {
+        margin-right: initial;
+        margin-left: 6px;
     }
 
     .example-video {
@@ -1342,6 +1351,9 @@
         padding: 0;
         margin: 0;
         border: 0;
+    }
+    :global(body.dark-mode) .update-image {
+        color: white;
     }
 
     .project-list {
