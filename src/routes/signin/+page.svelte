@@ -34,14 +34,14 @@
     let showingPassword = false;
 
     let wrongInfo = false;
-    let hCaptcha_token = false;
+    let captcha_token = false;
 
     const togglePasswordView = () => {
         showingPassword = !showingPassword;
     };
 
     async function login() {
-        const token = await Authentication.verifyPassword(username, password, hCaptcha_token);
+        const token = await Authentication.verifyPassword(username, password, captcha_token);
 
         if (token) {
             localStorage.setItem("username", username);
@@ -54,6 +54,8 @@
 
     const LoginAccountSafe = () => {
         if (loggingIn) return;
+        if (!captcha_token) return;
+
         loggingIn = true;
         login()
         .then((success) => {
@@ -160,21 +162,19 @@
     }
 
     onMount(() => {
-        window.onHcaptchaError = () => {
-            alert("Failed to verify you are human. Please try again.");
-            hcaptcha.reset();
+        window.on_captcha_complete = (token) => {
+            captcha_token = token;
         };
 
-        hcaptcha.render('hcaptcha', {
-            sitekey: "1200fd04-661a-4cd4-ac36-1494e69a24b4",
-            // if body contains dark-mode class, use dark
-            theme: document.body.classList.contains("dark-mode") ? "dark" : "light",
-            'error-callback': 'onHcaptchaError',
-            hl: currentLang
-        });
+        window.on_captcha_expired = () => {
+            captcha_token = false;
+        };
 
-        window.on_captcha_complete = (token) => {
-            hCaptcha_token = token;
+        window.on_captcha_error = () => {
+            // reload the captcha
+            turnstile.reset();
+            captcha_token = false;
+            checkIfValid();
         };
     });
 </script>
@@ -188,7 +188,7 @@
     <meta property="twitter:description" content="Login for PenguinMod to start sharing your projects!">
     <meta property="og:url" content="https://penguinmod.com/signin">
     <meta property="twitter:url" content="https://penguinmod.com/signin">
-    <script src="https://js.hcaptcha.com/1/api.js?render=explicit&hl=__LANGUAGE_CODE__" async defer></script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </svelte:head>
 
 {#if !embed}
@@ -358,13 +358,15 @@
             </button>
         </div>
 
-        <div 
-            id="hcaptcha"
+        <div
+            class="cf-turnstile"
+            data-sitekey="0x4AAAAAAA0-uEePyt9NmTMl"
             data-callback="on_captcha_complete"
-            data-theme="light"
-        />
+            data-expired-callback="on_captcha_expired"
+            data-error-callback="on_captcha_error"
+        ></div>
 
-        <button class="Login-acc" data-canClick={hCaptcha_token!==null} on:click={LoginAccountSafe}>
+        <button class="Login-acc" data-canClick={!!captcha_token} on:click={LoginAccountSafe}>
             {#if loggingIn}
                 <LoadingSpinner icon="/loading_white.png" />
             {:else}

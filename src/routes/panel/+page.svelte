@@ -11,6 +11,7 @@
     import JSZip from "jszip";
     import BlobAndDataUrl from "./blobanddataurl.js";
     import FileTypes from "./filetypes.js";
+    import Stats from "../../lib/statsComponent/stats.svelte";
 
     const ProjectClient = new ProjectApi();
 
@@ -45,12 +46,21 @@
             return;
         }
 
+        function Flatten(obj) {
+            let stats = [];
+            for (const name in obj) {
+                if (typeof obj[name] === "object") {
+                    stats.push({ name: name, value: Flatten(obj[name]) });
+                    continue;
+                }
+                stats.push(`${name}: ${obj[name]}`)
+            }
+            return stats;
+        }
+
         ProjectApi.getServerInfo()
             .then((stats) => {
-                for (const name in stats) {
-                    serverStats.push(`${name}: ${stats[name]}`)
-                }
-                serverStats = serverStats
+                serverStats = Flatten(stats);
             })
             .catch((err) => {
                 console.error(err);
@@ -161,16 +171,14 @@
     };
 
     let unapprovedPage = 1;
-    /*
     function openProjectsMenu(type) {
         // type is assumed to be unapproved because we have nothing else right now
         unapprovedProjects = [];
         contentWithReports = [];
-        ProjectClient.getUnapprovedProjects(unapprovedPage - 1).then(unapprovedProjs => {
+        ProjectClient.getRemovedProjects(unapprovedPage - 1).then(unapprovedProjs => {
             unapprovedProjects = unapprovedProjs;
         });
     }
-    */
     function openReportsMenu(type) {
         unapprovedProjects = [];
         contentWithReports = [];
@@ -1232,6 +1240,7 @@
                         <img
                             src={`${ProjectApi.OriginApiUrl}/api/v1/projects/getproject?projectID=${lastSelectedProjectId}&requestType=thumbnail`}
                             alt="Project Thumbnail"
+                            style={{ maxWidth: '100%' }} 
                         />
                     </a>
                 {/if}
@@ -1307,9 +1316,7 @@
             
             <div class="card">
                 <h2>Server Stats</h2>
-                {#each serverStats as stat}
-                    <p>{stat}</p>
-                {/each}
+                <Stats stats_data={serverStats} render={true} />
             </div>
             <br />
 
