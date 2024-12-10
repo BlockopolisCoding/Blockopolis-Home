@@ -3,7 +3,7 @@
     import Authentication from "../../resources/authentication.js";
     import ProjectApi from "../../resources/projectapi.js";
     import EmojiList from "../../resources/emojis.js";
-    import { PUBLIC_STUDIO_URL } from "$env/static/public";
+    import { PUBLIC_STUDIO_URL, PUBLIC_MAX_UPLOAD_SIZE } from "$env/static/public";
 
     const ProjectClient = new ProjectApi();
 
@@ -17,6 +17,7 @@
     import ClickableProject from "$lib/ClickableProject/Project.svelte";
     import Button from "$lib/Button/Button.svelte";
     import StatusAlert from "$lib/Alert/StatusAlert.svelte";
+    import Stats from "../../lib/statsComponent/stats.svelte";
     // translations
     import LocalizedText from "$lib/LocalizedText/Node.svelte";
     import TranslationHandler from "../../resources/translations.js";
@@ -45,6 +46,17 @@
     let projectImage;
     let projectImageURL;
     let projectData;
+    let projectSizes = { name: `0/${PUBLIC_MAX_UPLOAD_SIZE}MB`, value: [] };
+    function updateSize() {
+        projectSizes[0] = `thumbnail: ${(((projectImage?.size ?? 0) / 1024) / 1024).toFixed(2)}MB`;
+        if (projectData) 
+            ProjectClient.resolveProjectSizes(projectData, projectImage?.size ?? 0, true)
+                .then(([sizes, toLarge]) => {
+                    projectSizes = sizes;
+                    if (toLarge) 
+                        alert(TranslationHandler.text('uploading.error.projecttoolarge', currentLang));
+                });
+    }
 
     let projectInputName;
     let remixingProjectName;
@@ -257,10 +269,12 @@
                 if (data.type === "image") {
                     projectImageURL = data.uri;
                     projectImage = dataURLtoBlob(data.uri);
+                    updateSize();
                 }
                 // project: uri of project data
                 if (data.type === "project") {
                     projectData = dataURLtoBlob(data.uri);
+                    updateSize();
                 }
 
                 // we done here
@@ -293,6 +307,7 @@
         input = input.target;
         projectImage = input.files[0];
         projectImageURL = await filePicked(projectImage);
+        updateSize();
     }
     async function projectFilePicked(input) {
         input = input.target;
@@ -305,6 +320,7 @@
         )
             .replace("$2", floatTo2Decimals(file.size / 1250000))
             .replace("$1", file.name);
+        updateSize();
     }
 
     let isBusyUploading = false;
@@ -324,10 +340,8 @@
             remix: remixProjectId,
             project: projectData,
         })
-        .then((projectId) => {
-            window.open(`${PUBLIC_STUDIO_URL}/#${projectId}`);
-        })
-            .catch((err) => {
+            .then(projectId => open(`${PUBLIC_STUDIO_URL}/#${projectId}`))
+            .catch(err => {
                 const message = TranslationHandler.text(
                     `uploading.error.${String(err).toLowerCase()}`,
                     currentLang
@@ -971,10 +985,12 @@
                             lang={currentLang}
                         />
                     </label>
+                    <hr>
+                    <Stats stats_data={[projectSizes]} render={true}></Stats>
                 </div>
             </div>
             <div style="display:flex;flex-direction:row;margin-top:48px">
-                {#if loggedIn && projectData !== undefined}
+                {#if loggedIn && projectData}
                     <div>
                         {#if remixingProjectName}
                             <p>
@@ -1337,6 +1353,7 @@
         width: 100%;
         border: 0px;
         padding: 0.25rem 0;
+        margin-bottom: 0.50rem;
         outline: 0;
         cursor: pointer;
         font-weight: bold;

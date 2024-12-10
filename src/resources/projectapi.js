@@ -1,4 +1,4 @@
-import { PUBLIC_API_URL, PUBLIC_STUDIO_URL } from "$env/static/public";
+import { PUBLIC_API_URL, PUBLIC_STUDIO_URL, PUBLIC_MAX_UPLOAD_SIZE } from "$env/static/public";
 
 let OriginApiUrl = PUBLIC_API_URL;
 
@@ -7,6 +7,15 @@ import protobuf from "protobufjs";
 import jsonDescriptor from "./protobuf-bundle.json";
 let protobufRoot = protobuf.Root.fromJSON(jsonDescriptor);
 let project = protobufRoot.lookupType("project.Project");
+function MB(num) {
+    const Kb = (num >> 10) & 0b1111111111;
+    const Mb = (num >> 20) & 0b1111111111;
+    const Gb = (num >> 30) & 0b1111111111;
+    if (Gb) return `${(num / 1024 / 1024 / 1024).toFixed(2)}GB`;
+    if (Mb) return `${(num / 1024 / 1024).toFixed(2)}MB`;
+    if (Kb) return `${(num / 1024).toFixed(2)}KB`;
+    return `${num}B`;
+}
 
 class ProjectApi {
     constructor(token, username) {
@@ -136,10 +145,7 @@ class ProjectApi {
         });
     }
 
-    /**
-     * @deprecated Cannot be used statically anymore.
-     */
-    static getUnapprovedProjects() {
+    getRemovedProjects() {
         throw new Error("Unapproved Projects can only be viewed in a client")
     }
 
@@ -1336,7 +1342,7 @@ class ProjectApi {
                 currentCostume: json.targets[target].currentCostume,
                 costumes: [],
                 sounds: [],
-                volume: json.targets[target].volume,
+                volume: Math.round(json.targets[target].volume || 0),
                 layerOrder: json.targets[target].layerOrder,
                 x: Math.round(json.targets[target].x || 0),
                 y: Math.round(json.targets[target].y || 0),
@@ -1445,7 +1451,6 @@ class ProjectApi {
                     minimized: json.targets[target].comments[comment].minimized,
                     text: json.targets[target].comments[comment].text
                 }
-                console.log(newtarget.comments[comment]);
             }
 
             // loop over the costumes
@@ -1482,7 +1487,7 @@ class ProjectApi {
                 id: json.monitors[monitor].id,
                 mode: json.monitors[monitor].mode,
                 opcode: json.monitors[monitor].opcode,
-                params: {},
+                params: json.monitors[monitor].params,
                 spriteName: json.monitors[monitor].spriteName || "",
                 value: String(json.monitors[monitor].value),
                 width: json.monitors[monitor].width,
@@ -1494,10 +1499,6 @@ class ProjectApi {
                 sliderMax: json.monitors[monitor].sliderMax,
                 isDiscrete: json.monitors[monitor].isDiscrete,
             });
-
-            for (const param in json.monitors[monitor].params) {
-                newjson.monitors[monitor].params[param] = JSON.stringify(json.monitors[monitor].params[param]);
-            }
         }
 
         // loop over the extensionData
@@ -1521,6 +1522,85 @@ class ProjectApi {
         }
 
         return project.encode(project.create(newjson)).finish();
+    }
+    resolveProjectSizes(file, imageSize = 0) {
+        return JSZip.loadAsync(file)
+            .then(async zip => {
+                const projectJSON = JSON.parse(await zip.file("project.json").async("text"));
+                const projectSize = this.jsonToProtobuf(projectJSON).length;
+                const targets = projectJSON.targets;
+                projectJSON.targets = [];
+                const metaSize = this.jsonToProtobuf(projectJSON).length;
+                const assets = (await Promise.all(zip
+                    .filter((name, file) => 
+                            !file.dir && 
+                            name !== 'project.json')
+                    .map(async file => [await file.async('blob'), file.name])))
+                    .reduce((c,v) => (c[v[1]] = v[0], c), {});
+
+                const statTree = [];
+                for (const target of targets) {
+                    projectJSON.targets[0] = target;
+                    const costumes = target.costumes
+                        .map(asset => [asset.name, assets[asset.md5ext]]);
+                    const sounds = target.sounds
+                        .map(asset => [asset.name, assets[asset.md5ext]]);
+
+                    const codeSize = this.jsonToProtobuf(projectJSON).length - metaSize;
+                    const costumeSize = costumes.reduce((c,v) => c + v[1].size, 0);
+                    const soundSize = sounds.reduce((c,v) => c + v[1].size, 0);
+                    const size = codeSize
+                        + costumeSize
+                        + soundSize;
+                    statTree.push({
+                        name: `${target.name}: ${MB(size)}`,
+                        value: [
+                            `code: ${MB(codeSize)}`,
+                            {
+                                name: `costumes: ${MB(costumeSize)}`,
+                                value: costumes.map(([name, asset]) => `${name}: ${MB(asset.size)}`)
+                            },
+                            {
+                                name: `sounds: ${MB(soundSize)}`,
+                                value: sounds.map(([name, asset]) => `${name}: ${MB(asset.size)}`)
+                            }
+                        ]
+                    })
+                }
+
+                const size = Object.values(assets)
+                    .reduce((c,v) => c + v.size, projectSize + imageSize);
+                return [
+                    {
+                        name: `${MB(size)}/${PUBLIC_MAX_UPLOAD_SIZE}MB`,
+                        value: [
+                        `thumbnail: ${MB(imageSize)}`,
+                        {
+                            name: `project: ${MB(size)}`,
+                            value: statTree
+                        }
+                        ]
+                    }, 
+                    size > (Number(PUBLIC_MAX_UPLOAD_SIZE) * 1024 * 1024)
+                ];
+            });
+    }
+    handleProjectFile(file, imageSize = 0) {
+        return JSZip.loadAsync(file)
+            .then(async zip => {
+                const projectJSON = JSON.parse(await zip.file("project.json").async("text"));
+                const protobuf = new Blob([this.jsonToProtobuf(projectJSON)]);
+                const assets = await Promise.all(zip
+                    .filter((name, file) => 
+                            !file.dir && 
+                            name !== 'project.json')
+                    .map(async file => [await file.async('blob'), file.name]));
+                const size = assets.reduce((c,v) => c + v[0].size, protobuf.size + imageSize);
+                if (size > (Number(PUBLIC_MAX_UPLOAD_SIZE) * 1024 * 1024)) 
+                    throw 'ProjectToLarge';
+    
+                return { protobuf, assets };
+            });
     }
 
     protobufToJson(buffer) {
@@ -1706,51 +1786,40 @@ class ProjectApi {
 
 
         return new Promise(async (resolve, reject) => {
-            JSZip.loadAsync(data.project).then(async zip => {
-                const projectJSON = JSON.parse(await zip.file("project.json").async("text"))
-
-                const protobuf = this.jsonToProtobuf(projectJSON);
-
-                const assets = [];
-                zip.forEach((relativePath, file) => {
-                    if (file.dir) return;
-                    if (relativePath === "project.json") return;
-                    assets.push(file);
+            const { protobuf, assets } = await this.handleProjectFile(data.project, data.image.size)
+                .catch(err => {
+                    reject(err);
+                    return { protobuf: null, assets: [] };
                 });
-                
-                const API_ENDPOINT = `${OriginApiUrl}/api/v1/projects/uploadProject`;
-                const request = new XMLHttpRequest();
-                const formData = new FormData();
+            if (!protobuf) return;
 
-                request.open("POST", API_ENDPOINT, true);
-                request.onload = () => {
-                    const response = JSON.parse(request.response);
+            const API_ENDPOINT = `${OriginApiUrl}/api/v1/projects/uploadProject`;
+            const request = new XMLHttpRequest();
+            const formData = new FormData();
 
-                    if (response.error) {
-                        reject(response.error);
-                        return;
-                    }
+            request.open("POST", API_ENDPOINT, true);
+            request.onload = () => {
+                const response = JSON.parse(request.response);
 
-                    resolve(response.id);
-                };
-
-                formData.append("username", username);
-                formData.append("token", token);
-                formData.append("title", title);
-                formData.append("instructions", instructions);
-                formData.append("notes", notes);
-                formData.append("remix", remix);
-
-                for (let i = 0; i < assets.length; i++) {
-                    // convert to blob
-                    formData.append("assets", await assets[i].async("blob"), assets[i].name);
+                if (response.error) {
+                    reject(response.error);
+                    return;
                 }
 
-                formData.append("jsonFile", new Blob([protobuf]));
-                formData.append("thumbnail", data.image);
+                resolve(response.id);
+            };
 
-                request.send(formData);
-            });
+            formData.append("username", username);
+            formData.append("token", token);
+            formData.append("title", title);
+            formData.append("instructions", instructions);
+            formData.append("notes", notes);
+            formData.append("remix", remix);
+            assets.forEach(ent => formData.append("assets", ...ent))
+            formData.append("jsonFile", protobuf);
+            formData.append("thumbnail", data.image);
+
+            request.send(formData);
         });
     }
 
